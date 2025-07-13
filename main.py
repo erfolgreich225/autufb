@@ -1,10 +1,11 @@
+
 import time
 import random
 import string
-from selenium import webdriver
+import undetected_chromedriver as uc
 from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
-from selenium.webdriver.chrome.options import Options
+from selenium_stealth import stealth
 
 # Đọc danh sách profile
 with open('profiles.txt') as f:
@@ -67,18 +68,23 @@ def is_ad(post):
 
 
 def comment_in_groups(profile_path):
-    chrome_options = Options()
-    chrome_options.add_argument(f"--user-data-dir={profile_path}")
-    chrome_options.add_argument("--disable-blink-features=AutomationControlled")
-    chrome_options.add_argument("--disable-extensions")
-    chrome_options.add_argument("--disable-infobars")
-    chrome_options.add_argument("--start-maximized")
-    chrome_options.add_argument("--lang=vi")
-    chrome_options.add_experimental_option("excludeSwitches", ["enable-automation"])
-    chrome_options.add_experimental_option('useAutomationExtension', False)
-    chrome_options.add_argument(f'user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36')
-
-    driver = webdriver.Chrome(options=chrome_options)
+    options = uc.ChromeOptions()
+    options.add_argument(f"--user-data-dir={profile_path}")
+    options.add_argument("--disable-blink-features=AutomationControlled")
+    options.add_argument("--disable-extensions")
+    options.add_argument("--disable-infobars")
+    options.add_argument("--start-maximized")
+    options.add_argument("--lang=vi")
+    options.add_argument("user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36")
+    driver = uc.Chrome(options=options)
+    stealth(driver,
+        languages=["vi-VN", "vi"],
+        vendor="Google Inc.",
+        platform="Win32",
+        webgl_vendor="Intel Inc.",
+        renderer="Intel Iris OpenGL Engine",
+        fix_hairline=True,
+    )
     time.sleep(2)
 
     # Đọc danh sách link nhóm từ file groups.txt
