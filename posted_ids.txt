@@ -1,0 +1,1 @@
+# Lưu ID các bài viết đã comment (mỗi dòng 1 ID)

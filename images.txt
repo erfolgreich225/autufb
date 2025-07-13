@@ -1,0 +1,4 @@
+# Danh sách đường dẫn ảnh mẫu để comment (mỗi dòng 1 ảnh)
+# Ví dụ:
+# /workspaces/autufb/images/img1.jpg
+# /workspaces/autufb/images/img2.png

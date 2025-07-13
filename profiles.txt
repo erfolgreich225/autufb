@@ -1,0 +1,4 @@
+# Danh sách 12 đường dẫn profile Chrome (mỗi dòng 1 profile)
+# Ví dụ:
+# /home/user/.config/google-chrome/Profile 1
+# /home/user/.config/google-chrome/Profile 2

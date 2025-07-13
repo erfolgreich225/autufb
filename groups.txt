@@ -1,0 +1,4 @@
+# Danh sách link nhóm cần comment (mỗi dòng 1 link)
+# Ví dụ:
+# https://www.facebook.com/groups/1234567890
+# https://www.facebook.com/groups/abcdefg
