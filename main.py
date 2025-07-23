@@ -2,10 +2,34 @@
 import time
 import random
 import string
+import os
+import signal
+import sys
 import undetected_chromedriver as uc
 from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
 from selenium_stealth import stealth
+
+# Global flag for graceful shutdown
+stop_flag = False
+
+def signal_handler(sig, frame):
+    global stop_flag
+    print("\nNhận tín hiệu dừng. Đang thoát một cách an toàn...")
+    stop_flag = True
+
+def check_stop_condition():
+    """Kiểm tra điều kiện dừng từ file stop.txt hoặc flag"""
+    global stop_flag
+    if stop_flag:
+        return True
+    if os.path.exists('stop.txt'):
+        print("Phát hiện file stop.txt. Đang dừng...")
+        return True
+    return False
+
+# Đăng ký signal handler cho Ctrl+C
+signal.signal(signal.SIGINT, signal_handler)
 
 # Đọc danh sách profile
 with open('profiles.txt') as f:
@@ -68,6 +92,9 @@ def is_ad(post):
 
 
 def comment_in_groups(profile_path):
+    if check_stop_condition():
+        return False
+        
     options = uc.ChromeOptions()
     options.add_argument(f"--user-data-dir={profile_path}")
     options.add_argument("--disable-blink-features=AutomationControlled")
@@ -76,68 +103,105 @@ def comment_in_groups(profile_path):
     options.add_argument("--start-maximized")
     options.add_argument("--lang=vi")
     options.add_argument("user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36")
-    driver = uc.Chrome(options=options)
-    stealth(driver,
-        languages=["vi-VN", "vi"],
-        vendor="Google Inc.",
-        platform="Win32",
-        webgl_vendor="Intel Inc.",
-        renderer="Intel Iris OpenGL Engine",
-        fix_hairline=True,
-    )
-    time.sleep(2)
+    
+    driver = None
+    try:
+        driver = uc.Chrome(options=options)
+        stealth(driver,
+            languages=["vi-VN", "vi"],
+            vendor="Google Inc.",
+            platform="Win32",
+            webgl_vendor="Intel Inc.",
+            renderer="Intel Iris OpenGL Engine",
+            fix_hairline=True,
+        )
+        time.sleep(2)
 
-    # Đọc danh sách link nhóm từ file groups.txt
-    with open('groups.txt') as f:
-        group_links = [line.strip() for line in f if line.strip() and not line.startswith('#')]
+        # Đọc danh sách link nhóm từ file groups.txt
+        with open('groups.txt') as f:
+            group_links = [line.strip() for line in f if line.strip() and not line.startswith('#')]
 
-    posted_ids = load_posted_ids()
-    for group_url in group_links:
-        driver.get(group_url)
-        time.sleep(5)
-        scroll_count = 0
-        while True:
-            posts = driver.find_elements(By.XPATH, "//div[@role='article']")
-            for post in posts:
-                try:
-                    if is_ad(post):
-                        continue
-                    post_id = post.get_attribute('data-ft') or post.get_attribute('id')
-                    if not post_id or post_id in posted_ids:
-                        continue
-                    # Tìm ô comment
-                    try:
-                        comment_box = post.find_element(By.XPATH, ".//form//div[@aria-label='Viết bình luận...']")
-                    except:
-                        continue
-                    cmt_type, cmt_content = random_comment_or_image()
-                    comment_box.click()
-                    time.sleep(random.uniform(0.5, 1.5))
-                    if cmt_type == 'text':
-                        human_typing(comment_box, cmt_content)
-                        comment_box.send_keys(Keys.ENTER)
-                    elif cmt_type == 'image':
-                        try:
-                            attach_btn = post.find_element(By.XPATH, ".//input[@type='file' and @accept='image/*']")
-                            attach_btn.send_keys(cmt_content)
-                            time.sleep(random.uniform(1.5, 2.5))
-                            comment_box.send_keys(Keys.ENTER)
-                        except Exception as e:
-                            continue
-                    save_posted_id(post_id)
-                    posted_ids.add(post_id)
-                    time.sleep(random.uniform(3, 6))
-                except Exception as e:
-                    continue
-            driver.execute_script("window.scrollBy(0, 1000);")
-            scroll_count += 1
-            time.sleep(random.uniform(2, 4))
-            if scroll_count > 20:
+        posted_ids = load_posted_ids()
+        for group_url in group_links:
+            if check_stop_condition():
                 break
-    driver.quit()
+                
+            driver.get(group_url)
+            time.sleep(5)
+            scroll_count = 0
+            while scroll_count <= 20:
+                if check_stop_condition():
+                    break
+                    
+                posts = driver.find_elements(By.XPATH, "//div[@role='article']")
+                for post in posts:
+                    if check_stop_condition():
+                        break
+                        
+                    try:
+                        if is_ad(post):
+                            continue
+                        post_id = post.get_attribute('data-ft') or post.get_attribute('id')
+                        if not post_id or post_id in posted_ids:
+                            continue
+                        # Tìm ô comment
+                        try:
+                            comment_box = post.find_element(By.XPATH, ".//form//div[@aria-label='Viết bình luận...']")
+                        except:
+                            continue
+                        cmt_type, cmt_content = random_comment_or_image()
+                        comment_box.click()
+                        time.sleep(random.uniform(0.5, 1.5))
+                        if cmt_type == 'text':
+                            human_typing(comment_box, cmt_content)
+                            comment_box.send_keys(Keys.ENTER)
+                        elif cmt_type == 'image':
+                            try:
+                                attach_btn = post.find_element(By.XPATH, ".//input[@type='file' and @accept='image/*']")
+                                attach_btn.send_keys(cmt_content)
+                                time.sleep(random.uniform(1.5, 2.5))
+                                comment_box.send_keys(Keys.ENTER)
+                            except Exception as e:
+                                continue
+                        save_posted_id(post_id)
+                        posted_ids.add(post_id)
+                        time.sleep(random.uniform(3, 6))
+                    except Exception as e:
+                        continue
+                driver.execute_script("window.scrollBy(0, 1000);")
+                scroll_count += 1
+                time.sleep(random.uniform(2, 4))
+                
+    except Exception as e:
+        print(f"Lỗi trong quá trình chạy: {e}")
+    finally:
+        if driver:
+            driver.quit()
+    
+    return not check_stop_condition()
 
 if __name__ == "__main__":
-    for profile in profiles:
-        print(f"Đang chạy với profile: {profile}")
-        comment_in_groups(profile)
-        time.sleep(random.uniform(10, 30))
+    try:
+        for profile in profiles:
+            if check_stop_condition():
+                print("Đã dừng trước khi xử lý profile:", profile)
+                break
+                
+            print(f"Đang chạy với profile: {profile}")
+            success = comment_in_groups(profile)
+            if not success:
+                print("Đã dừng trong quá trình xử lý profile:", profile)
+                break
+                
+            if not check_stop_condition():
+                time.sleep(random.uniform(10, 30))
+                
+        print("Đã hoàn thành hoặc dừng tất cả các profile.")
+    except KeyboardInterrupt:
+        print("\nĐã nhận Ctrl+C, đang thoát...")
+    except Exception as e:
+        print(f"Lỗi không mong muốn: {e}")
+    finally:
+        if os.path.exists('stop.txt'):
+            os.remove('stop.txt')
+            print("Đã xóa file stop.txt")
